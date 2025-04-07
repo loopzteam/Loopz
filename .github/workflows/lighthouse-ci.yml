@@ -1,0 +1,29 @@
+name: Lighthouse CI
+
+on:
+  pull_request:
+    branches:
+      - main # Or your main branch name
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Use the Node.js version appropriate for your project
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Next.js Project
+        run: npm run build
+
+      - name: Run Lighthouse CI
+        run: npm run lhci
+        # Optionally, add an LHCI GitHub App token if you want status checks on PRs
+        # env:
+        #   LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }} 
