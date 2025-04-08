@@ -12,34 +12,35 @@ type StatusData = {
 
 // Route handler for GET requests to test connections
 export async function GET() {
-  let supabaseStatus: { connected: boolean; error?: string; data: StatusData } = {
-    connected: false,
-    data: {} // Initialize data here to avoid undefined issues
-  };
+  let supabaseStatus: { connected: boolean; error?: string; data: StatusData } =
+    {
+      connected: false,
+      data: {}, // Initialize data here to avoid undefined issues
+    };
   let openaiStatus: { connected: boolean; error?: string; data: StatusData } = {
     connected: false,
-    data: {}
+    data: {},
   };
 
   // --- Test Supabase Connection ---
   try {
     const supabase = createServerClient();
-    const { data: _data, error } = await supabase.auth.getUser();
+    const { error } = await supabase.auth.getUser();
 
     if (error && error.message !== "Auth session missing!") {
       throw new Error(`Supabase auth error: ${error.message}`);
     }
-    
+
     // Initialize supabaseStatus fully upon successful connection
     supabaseStatus = {
       connected: true,
-      data: { // Ensure data is initialized here
+      data: {
+        // Ensure data is initialized here
         message: "Successfully connected and performed basic auth check.",
       },
     };
 
     // --- REMOVED Check for Profiles Table ---
-    
   } catch (error: unknown) {
     console.error("Supabase connection test failed:", error);
     let errorMessage = "Unknown Supabase error";
@@ -49,7 +50,7 @@ export async function GET() {
     // Ensure data is an empty object even on error
     supabaseStatus = { connected: false, error: errorMessage, data: {} };
   }
-  
+
   // --- Test OpenAI Connection ---
   try {
     if (!process.env.OPENAI_API_KEY) {
@@ -69,8 +70,7 @@ export async function GET() {
     let errorMessage = "Unknown OpenAI error";
     if (error instanceof Error) {
       errorMessage = error.message;
-      // @ts-expect-error - Accessing potentially non-standard property 'code'
-      if ('code' in error && error.code === "invalid_api_key") {
+      if ("code" in error && error.code === "invalid_api_key") {
         errorMessage = "Invalid OpenAI API Key.";
       } else if (error.message?.includes("OPENAI_API_KEY")) {
         errorMessage = error.message;
@@ -81,15 +81,17 @@ export async function GET() {
     // Ensure data is an empty object even on error
     openaiStatus = { connected: false, error: errorMessage, data: {} };
   }
-  
+
   // --- Return Combined Status ---
   const allConnected = supabaseStatus.connected && openaiStatus.connected;
   return NextResponse.json(
     {
-      message: allConnected ? "All services connected successfully." : "One or more services failed to connect.",
+      message: allConnected
+        ? "All services connected successfully."
+        : "One or more services failed to connect.",
       supabase: supabaseStatus,
       openai: openaiStatus,
     },
-    { status: allConnected ? 200 : 500 }
+    { status: allConnected ? 200 : 500 },
   );
 }

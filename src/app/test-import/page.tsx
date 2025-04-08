@@ -1,6 +1,7 @@
-import React from 'react';
+import React from "react";
 // import { Button } from "@/components/ui/button"; // Remove button import
-import { createBrowserClient } from '@/lib/supabase/client'; // Import using alias
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { createBrowserClient } from "@/lib/supabase/client"; // Import using alias
 
 // We are intentionally not using createBrowserClient in the component body
 // to isolate if the import resolution itself is the problem.
@@ -14,4 +15,4 @@ export default function TestImportPage() {
       <p>Attempting to import createBrowserClient...</p>
     </div>
   );
-} 
+}
