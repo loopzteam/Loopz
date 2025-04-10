@@ -1,8 +1,13 @@
 /**
- * Database operations test script
+ * Database operations test script (ACTIVE VERSION)
  * 
  * This file contains test functions for validating database operations.
- * It can be run from a component or page during development.
+ * Use this for debugging database issues through the /api/db-test endpoint.
+ * 
+ * USAGE:
+ * - This file is used by the /api/db-test API route
+ * - Tests require the SUPABASE_SERVICE_ROLE_KEY environment variable
+ * - All tests run server-side only for security
  */
 
 import * as db from './db';

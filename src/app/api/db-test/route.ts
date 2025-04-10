@@ -1,3 +1,14 @@
+/**
+ * ACTIVE DATABASE TEST API ROUTE
+ * 
+ * This server-side API route executes database tests using the service role key.
+ * Access this endpoint by calling POST /api/db-test.
+ * 
+ * SECURITY NOTE:
+ * - This endpoint uses the service role key which has full database access
+ * - Consider disabling or protecting this endpoint in production
+ */
+
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { runDatabaseTests } from '@/lib/db-test';

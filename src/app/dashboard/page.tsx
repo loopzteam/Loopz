@@ -1,8 +1,17 @@
+import { redirect } from 'next/navigation';
 import SignOutButton from '@/components/auth/sign-out-button';
+import { createServerClient } from '@/lib/supabase/server';
 
-export default function DashboardPage() {
-  // In a real app, you might fetch user-specific data here
-  // using server components or client components with useAuth()
+export default async function DashboardPage() {
+  // Server-side auth check as fallback protection
+  const supabase = createServerClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  // If no session, redirect to auth page
+  if (!session) {
+    console.log('🛡️ SERVER: No session found at page level, redirecting to /auth');
+    redirect(`/auth?from=dashboard&t=${Date.now()}`);
+  }
   
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">

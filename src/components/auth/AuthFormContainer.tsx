@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import * as auth from "@/lib/auth";
 import { mapAuthError } from "./utils/auth-errors";
 import { FormAlert } from "./form-alert";
 import LoginForm from "./LoginForm";
 import SignupForm from "./SignupForm";
+import { AuthService } from "@/lib/auth/auth-service";
 
 export type AuthMode = "login" | "signup";
 
@@ -33,12 +34,77 @@ export default function AuthFormContainer() {
   const [isInitialized, setIsInitialized] = useState(false);
 
   const router = useRouter();
+  const searchParams = useSearchParams();
 
+  // Extract query parameters
+  const clearParam = searchParams.get('clear');
+  const errorParam = searchParams.get('error');
+  const fromParam = searchParams.get('from');
+  const timeParam = searchParams.get('t');
+  
+  // Handle cache-busting and logout state
+  useEffect(() => {
+    // If clear=true parameter exists, a logout redirect happened
+    if (clearParam === 'true') {
+      console.log('🔥 AUTH: Detected logout redirect, performing additional cleanup');
+      
+      // Perform additional cleanup on auth page load
+      const performAdditionalCleanup = async () => {
+        try {
+          // Force clear browser storage again
+          localStorage.clear();
+          sessionStorage.clear();
+          
+          // Clear any potential session
+          const authService = AuthService.getInstance();
+          await authService.validateSession();
+          
+          // Remove the clear parameter to prevent repeated cleanup on refresh
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.delete('clear');
+          window.history.replaceState({}, '', newUrl.toString());
+          
+          console.log('🔥 AUTH: Additional cleanup complete');
+        } catch (error) {
+          console.error('🔥 AUTH: Cleanup error:', error);
+        }
+      };
+      
+      performAdditionalCleanup();
+    }
+    
+    // Display appropriate messages based on query parameters
+    if (errorParam) {
+      setFormState(prev => ({
+        ...prev,
+        error: errorParam === 'signout_failed' 
+          ? 'Sign out encountered an error but you have been redirected to the login page.'
+          : 'Authentication error: ' + errorParam
+      }));
+    } else if (fromParam) {
+      setFormState(prev => ({
+        ...prev,
+        message: `You need to be logged in to access ${fromParam}`
+      }));
+    }
+  }, [clearParam, errorParam, fromParam, timeParam]);
+
+  // Original useEffect for auth initialization
   useEffect(() => {
     const initAuth = async () => {
       try {
         await auth.initializeAuth();
         setIsInitialized(true);
+        
+        // Double-check session status on page load
+        const authInstance = AuthService.getInstance();
+        const hasSession = await authInstance.validateSession();
+        
+        // If user somehow has a valid session on the auth page, redirect to dashboard
+        if (hasSession && !clearParam) {
+          console.log('🔥 AUTH: Valid session detected on auth page, redirecting to dashboard');
+          router.push('/dashboard');
+        }
       } catch (_err) {
         setFormState(prev => ({
           ...prev,
@@ -47,7 +113,7 @@ export default function AuthFormContainer() {
       }
     };
     initAuth();
-  }, []);
+  }, [router, clearParam]);
 
   const handleInputChange = (field: keyof AuthFormState, value: string) => {
     setFormState(prev => ({ ...prev, [field]: value }));
