@@ -1,3 +1,4 @@
+// @ts-check
 import { dirname } from "path";
 import { fileURLToPath } from "url";
 import { FlatCompat } from "@eslint/eslintrc";
@@ -11,6 +12,20 @@ const compat = new FlatCompat({
 
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
+  {
+    rules: {
+      'max-lines': ['warn', {
+        max: 150,
+        skipBlankLines: true,
+        skipComments: true
+      }],
+      'max-lines-per-function': ['warn', {
+        max: 100,
+        skipBlankLines: true,
+        skipComments: true
+      }]
+    }
+  }
 ];
 
 export default eslintConfig;

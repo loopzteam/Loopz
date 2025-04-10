@@ -1,0 +1,114 @@
+import { NextResponse, type NextRequest } from 'next/server';
+import { createBrowserClient } from '@supabase/ssr';
+
+// Keep track of recently checked paths to prevent loops
+const CHECKED_PATHS = new Map<string, number>();
+const CHECK_TIMEOUT = 5000; // 5 seconds
+
+export async function middleware(request: NextRequest) {
+  const timestamp = new Date().toISOString();
+  const pathname = request.nextUrl.pathname;
+  
+  // Skip middleware for test routes and static assets
+  if (
+    pathname.startsWith('/_next') || 
+    pathname.startsWith('/static') ||
+    pathname.startsWith('/test-') ||
+    pathname.includes('favicon.ico') ||
+    pathname.includes('.js') ||
+    pathname.includes('.css')
+  ) {
+    return NextResponse.next();
+  }
+  
+  // Simple anti-loop protection
+  const key = `${pathname}-${request.cookies.toString()}`;
+  const lastCheck = CHECKED_PATHS.get(key);
+  const now = Date.now();
+  
+  if (lastCheck && now - lastCheck < CHECK_TIMEOUT) {
+    console.log(`[${timestamp}] 🛡️ Anti-loop: Skipping repeated check for ${pathname}`);
+    return NextResponse.next();
+  }
+  
+  // Update last check time
+  CHECKED_PATHS.set(key, now);
+  
+  // Clean up old entries from map (basic garbage collection)
+  if (CHECKED_PATHS.size > 100) {
+    for (const [mapKey, checkTime] of CHECKED_PATHS.entries()) {
+      if (now - checkTime > CHECK_TIMEOUT) {
+        CHECKED_PATHS.delete(mapKey);
+      }
+    }
+  }
+  
+  console.log(`[${timestamp}] 🔒 Middleware: ${pathname}`);
+  
+  try {
+    const response = NextResponse.next({ request: { headers: request.headers } });
+    
+    // Define Routes
+    const protectedRoutes = ['/dashboard', '/profile', '/tasks', '/test-db']; 
+    const authRoutes = ['/auth']; 
+
+    const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
+    const isOnAuthPage = authRoutes.some(route => pathname.startsWith(route));
+    
+    // Check session only once
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    
+    const { data } = await supabase.auth.getSession();
+    const session = data.session;
+    
+    console.log(`[${timestamp}] 📝 Session check: ${session ? 'Found' : 'Not found'}`);
+    
+    if (session) {
+      console.log(`[${timestamp}] 🔑 Session validation: Valid`);
+      
+      if (isOnAuthPage) {
+        console.log(`[${timestamp}] ✅ Already authenticated: Redirecting to /dashboard`);
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+      }
+    } else {
+      if (isProtectedRoute) {
+        console.log(`[${timestamp}] 🚫 Access denied: Redirecting to /auth`);
+        return NextResponse.redirect(new URL('/auth', request.url));
+      }
+    }
+    
+    return response;
+  } catch (error) {
+    console.error(`[${timestamp}] ❌ Middleware error:`, error);
+    
+    // On error for protected routes, redirect to auth
+    const isProtectedRoute = ['/dashboard', '/profile', '/tasks', '/test-db'].some(
+      route => pathname.startsWith(route)
+    );
+    
+    if (isProtectedRoute) {
+      return NextResponse.redirect(new URL('/auth', request.url));
+    }
+    
+    return NextResponse.next();
+  }
+}
+
+// Configure which routes this middleware should run on
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - images (static images folder)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|images).*)',
+    '/', 
+  ],
+}; 

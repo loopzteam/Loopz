@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+// This middleware is completely disabled
 export function middleware(request: NextRequest) {
-  console.log(`[PASSTHROUGH] Request to ${request.nextUrl.pathname}`);
+  console.log('⛔ DISABLED MIDDLEWARE - SHOULD NEVER RUN');
   return NextResponse.next();
 }
 
+// Match nothing - this ensures middleware never runs
 export const config = {
-  // Match nothing to effectively disable middleware
-  matcher: [],
+  matcher: []
 }; 
