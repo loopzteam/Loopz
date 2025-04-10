@@ -33,52 +33,50 @@ export function createServerClient() {
     );
   }
 
-  // Get the cookie store from next/headers
-  const cookieStore = cookies();
-
   // Initialize and return the server client
   return _createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
     cookies: {
       // The `get` method is used to read the session from cookies
       get(name: string) {
-        // @ts-expect-error TSError: Property 'get' does not exist on type 'Promise<ReadonlyRequestCookies>'.
-        // This error seems related to Next.js 15/React 19 type inference for `cookies()`
-        // in Server Component contexts. Supabase SSR relies on this pattern.
-        // Suppressing the error for now as the functionality works during runtime.
-        // TODO: Revisit this when library types are updated or issue is resolved.
-        return cookieStore.get(name)?.value;
+        try {
+          // We need to access the cookies synchronously here.
+          // Note that this will generate a warning, but the app will function correctly.
+          // Next.js 15 recommends using cookies() with await, but the Supabase
+          // client expects a synchronous API.
+          const cookieStore = cookies();
+          // @ts-ignore - Suppressing error as this works despite the warning
+          return cookieStore.get(name)?.value;
+        } catch (error) {
+          console.error('Error reading cookie:', name, error);
+          return undefined;
+        }
       },
       // NOTE: The @supabase/ssr package expects set and remove methods.
       // Although they are non-functional & cause warnings in pure Server Components,
       // they are REQUIRED by the library for Server Actions and Route Handlers where
-      // cookies ARE mutable. Leaving them empty or console.warn would break those contexts.
-      // Therefore, we keep the standard implementation using try/catch.
+      // cookies ARE mutable.
       set(
         name: string,
         value: string,
         options: import("@supabase/ssr").CookieOptions,
       ) {
         try {
-          // @ts-expect-error // See explanation for get() - necessary for mutable contexts
+          const cookieStore = cookies();
+          // @ts-ignore - Suppressing error as this works despite the warning
           cookieStore.set({ name, value, ...options });
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (_error) {
-          // Prefix error with underscore
           // In Server Components, set is not available. Supabase expects this method
           // to exist, but errors can be ignored if middleware handles session refresh.
-          // console.warn('Supabase server client: Error setting cookie in read-only context', error);
         }
       },
       remove(name: string, options: import("@supabase/ssr").CookieOptions) {
         try {
-          // @ts-expect-error // See explanation for get() - necessary for mutable contexts
+          const cookieStore = cookies();
+          // @ts-ignore - Suppressing error as this works despite the warning
           cookieStore.set({ name, value: "", ...options });
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (_error) {
-          // Prefix error with underscore
           // In Server Components, remove (via set) is not available.
           // Errors can be ignored if middleware handles session refresh.
-          // console.warn('Supabase server client: Error removing cookie in read-only context', error);
         }
       },
     },

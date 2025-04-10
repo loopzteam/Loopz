@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { type Session, type User } from '@supabase/supabase-js';
-import { AuthService } from '@/lib/auth/auth-service';
+import * as auth from '@/lib/auth';
 
 // Define the shape of the context value
 interface AuthContextType {
@@ -35,11 +35,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const auth = AuthService.getInstance();
-        await auth.initialize();
+        const { session, user } = await auth.initializeAuth();
         
-        setSession(auth.session);
-        setUser(auth.user);
+        setSession(session);
+        setUser(user);
         setError(null);
       } catch (err) {
         console.error("Error initializing auth:", err);
@@ -60,9 +59,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setError(null);
     
     try {
-      const auth = AuthService.getInstance();
       await auth.signOut();
-      // AuthService handles the redirect
+      // auth module handles the redirect
     } catch (err) {
       console.error("Error signing out:", err);
       setError(err instanceof Error ? err.message : "Failed to sign out");
